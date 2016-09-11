@@ -34,37 +34,45 @@ class Polynomial
 				if index == 0
 					result += cur
 				else
-					result += "#{cur}x^#{index}^" 
+					result += "#{cur}x<sup>#{index}</sup>" 
 			index--
 		return result
 
 	equal: (polynomial) ->
 		@degree = polynomial.degree
 		@field = polynomial.field
+
 		for elem, index in polynomial.coeff
-			@coeff = elem
-		return @
+			@coeff[index] = elem
+
+		@coeff.length = @degree + 1;
+
+		do @normalize
 
 	add: (polynomial) ->
 		if @field isnt polynomial.field
 			console.log "Error: Attempt to realize [ADDITION] in different fields"
-			return @
-		
-		a       = @coeff
-		b       = polynomial.coeff
-		deg     = Math.max @degree, polynomial.degree
-		result  = new Polynomial deg, @field
-		rc      = result.coeff
+			return -1
+		result  = new Polynomial
 
-		for elem, index in result.coeff
-			rc[index] = a[index] + b[index]
-		
+		if @degree < polynomial.degree
+			a       = polynomial
+			result.equal polynomial
+			b       = @
+		else
+			a       = @
+			result.equal @
+			b       = polynomial
+
+		for elem, index in b.coeff
+			result.coeff[index] += elem 
+
 		do result.normalize
 
 	substract: (polynomial) ->
 		if @field isnt polynomial.field
 			console.log "Error: Attempt to realize [SUBSTRACTION] in different fields"
-			return @
+			return -1
 
 		a       = @coeff
 		b       = polynomial.coeff
@@ -85,7 +93,7 @@ class Polynomial
 	multiply: (polynomial) ->
 		if @field isnt polynomial.field
 			console.log "Error: Attempt to realize [MULTIPLICATION] in different fields"
-			return @
+			return -1
 
 		result  = new Polynomial (@degree + polynomial.degree), @field
 		rc      = result.coeff
@@ -104,7 +112,7 @@ class Polynomial
 		rc = result.coeff
 
 		for elem, index in result.coeff
-			rc = elem * scalar
+			rc[index] = elem * scalar
 
 		do result.fieldify
 
@@ -129,7 +137,7 @@ class Polynomial
 			_visible_zeros_ = true
 		if @field isnt polynomial.field
 			console.log "Error: Attempt to realize [DIVISION] in different fields"
-			return @
+			return -1
 		if @degree < polynomial.degree
 			zero = new Polynomial()
 			return zero
@@ -137,27 +145,30 @@ class Polynomial
 		do @normalize
 		do polynomial.normalize
 
-		result  = new Polynomial (polynomial.degree - 1), @field
+		result  = new Polynomial @degree, @field
 		a       = new Polynomial
 		b       = new Polynomial
-		index1  = a.degree
-		index2  = 0;
-
+		
 		a.equal @
+		index1  = a.degree
+		index2  = 0
+
 
 		if logging
 			console.log do @toStringPolynomial
 			console.log ("=======================================");
-		while index1 > result.degree
-			continue if not a.coeff[index1]
-			
+		while index1 > polynomial.degree - 1
+			if not a.coeff[index1]
+				index1--
+				continue
+
 			b.equal polynomial
 
 			index2 = 0
 			while index2 < @field 
 				b.equal(polynomial._scalarMultiply index2)
-				index2++
 				break if b.coeff[b.degree] == a.coeff[index1]
+				index2++
 
 
 			result.coeff[a.degree - polynomial.degree] = index2
@@ -231,3 +242,14 @@ class Polynomial
 		this.coeff = result.coeff
 		this.degree = result.degree
 		return @
+
+
+test1 = new Polynomial(4,5,[3,2,1,0,4])
+test2 = new Polynomial(1,5,[0,1])
+result = new Polynomial;
+result.equal test1.divide test2
+console.log "========"
+console.log test1
+console.log "-"
+console.log test2
+console.log result
